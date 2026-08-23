@@ -1,0 +1,43 @@
+# Operating system junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors / IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Rust
+target/
+**/*.rs.bk
+
+# Node / TypeScript
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Test & coverage artifacts
+coverage/
+.coverage
+htmlcov/
+
+# Logs & temp
+*.log
+tmp/
+.cache/

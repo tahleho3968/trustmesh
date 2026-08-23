@@ -1,0 +1,38 @@
+name: 💡 Feature request
+description: Suggest an idea or capability for TrustMesh
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea? Big architectural ideas may be better suited to an RFC —
+        open this issue first and maintainers will help you decide.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or motivation
+      description: What are you trying to achieve? What is missing or painful today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should happen? Sketch the API/UX if you can.
+    validations:
+      required: true
+  - type: checkboxes
+    id: standards
+    attributes:
+      label: Standards alignment
+      description: Does this relate to an existing standard?
+      options:
+        - label: This relates to W3C Verifiable Credentials / Data Integrity
+        - label: This relates to W3C Bitstring Status List
+        - label: This relates to DIDs (did:key, did:web, ...)
+        - label: This relates to OpenID4VCI / OpenID4VP
+        - label: Not standards-related
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
