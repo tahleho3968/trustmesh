@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust:
+    name: Rust (fmt · clippy · test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect Rust workspace
+        id: workspace
+        run: echo "found=$(test -f Cargo.toml && echo yes || echo no)" >> "$GITHUB_OUTPUT"
+
+      - uses: dtolnay/rust-toolchain@stable
+        if: steps.workspace.outputs.found == 'yes'
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        if: steps.workspace.outputs.found == 'yes'
+
+      - name: Format
+        if: steps.workspace.outputs.found == 'yes'
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        if: steps.workspace.outputs.found == 'yes'
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Test
+        if: steps.workspace.outputs.found == 'yes'
+        run: cargo test --workspace
