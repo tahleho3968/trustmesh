@@ -1,0 +1,18 @@
+[package]
+name = "trustmesh-issuer"
+description = "Credential issuance for TrustMesh: signs W3C Verifiable Credentials with eddsa-jcs-2022 Data Integrity proofs."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+trustmesh-crypto.workspace = true
+trustmesh-credentials.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+bs58.workspace = true
+serde_jcs.workspace = true
+
+[lints]
+workspace = true

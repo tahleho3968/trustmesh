@@ -1,11 +1,16 @@
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Deserializer, Serializer};
 
+/// Single source of truth for wire-format timestamps (RFC 3339, UTC, `Z`).
+pub fn to_rfc3339(value: &DateTime<Utc>) -> String {
+    value.to_rfc3339_opts(SecondsFormat::AutoSi, true)
+}
+
 pub fn serialize<S>(value: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
-    serializer.serialize_str(&value.to_rfc3339_opts(SecondsFormat::AutoSi, true))
+    serializer.serialize_str(&to_rfc3339(value))
 }
 
 pub fn serialize_optional<S>(

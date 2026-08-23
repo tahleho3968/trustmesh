@@ -203,7 +203,7 @@ impl CredentialBuilder {
 #[cfg(test)]
 mod tests {
     use crate::status::StatusListEntry;
-    use crate::{BASE_CONTEXT, VERIFIABLE_CREDENTIAL_TYPE};
+    use crate::{BASE_CONTEXT, EDDSA_JCS_2022, VERIFIABLE_CREDENTIAL_TYPE};
     use chrono::TimeZone;
 
     use super::*;
@@ -344,7 +344,8 @@ mod tests {
     #[test]
     fn proof_roundtrip_with_details() {
         let created = Utc.with_ymd_and_hms(2026, 8, 23, 0, 0, 0).unwrap();
-        let mut proof = Proof::eddsa_data_integrity(created, "https://university.example/keys/1");
+        let mut proof =
+            Proof::data_integrity(EDDSA_JCS_2022, created, "https://university.example/keys/1");
         proof
             .details
             .insert("proofValue".into(), "z58DAdFfa9SkqZMVPxAQp7BQv".into());
@@ -355,7 +356,7 @@ mod tests {
 
         let json = serde_json::to_value(&credential).unwrap();
         assert_eq!(json["proof"]["type"], "DataIntegrityProof");
-        assert_eq!(json["proof"]["cryptosuite"], "eddsa-rdfc-2022");
+        assert_eq!(json["proof"]["cryptosuite"], EDDSA_JCS_2022);
         assert_eq!(json["proof"]["created"], "2026-08-23T00:00:00Z");
         let back: Credential = serde_json::from_value(json).unwrap();
         assert_eq!(
