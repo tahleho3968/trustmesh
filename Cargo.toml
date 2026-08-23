@@ -1,0 +1,18 @@
+[workspace]
+resolver = "2"
+members = ["crates/trustmesh-crypto"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/tahleho3968/trustmesh"
+
+[workspace.dependencies]
+ed25519-dalek = "2"
+sha2 = "0.10"
+bs58 = "0.5"
+getrandom = "0.3"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
