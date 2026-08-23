@@ -20,50 +20,50 @@ The issuer can sign; the next question a relying party asks is *should I trust
 this?*
 
 - **Verifier engine pipeline** — structured verification: structural → proof →
-  status → trust policy, with per-stage results (#TBD)
+  status → trust policy, with per-stage results (#6)
 - **JCS conformance vectors** — RFC 8785 test suite wired into CI so
-  canonicalization drift is impossible to merge (#TBD)
+  canonicalization drift is impossible to merge (#7)
 - **JSON Schema claim validation** — optional schema enforcement on subject
-  claims at issuance and verification (#TBD)
+  claims at issuance and verification (#8)
 - **Pluggable DID resolution** — trait-based resolver; `did:key` first,
-  `did:web` next (#TBD)
+  `did:web` next (#9)
 - **Bitstring Status List** — encode/decode + status checks for revocation
-  (#TBD)
+  (#10)
 
 ## Phase 2 — Making it usable
 
 Raw crates are for builders; these make TrustMesh operable.
 
 - **CLI skeleton** (`trustmesh` binary) — keygen / issue / verify from the
-  terminal (#TBD)
-- **REST API** — axum service exposing issue/verify/status endpoints (#TBD)
-- **Docker packaging** — one-command self-hosted verifier (#TBD)
+  terminal (#11)
+- **REST API** — axum service exposing issue/verify/status endpoints (#12)
+- **Docker packaging** — one-command self-hosted verifier (#13)
 - **QR code + static web verifier** — scan-to-verify without installing
-  anything (#TBD)
+  anything (#14)
 - **End-to-end example** — university issues a diploma, holder presents,
-  employer verifies (#TBD)
+  employer verifies (#15)
 
 ## Phase 3 — Holding & presenting
 
 The other two corners of the triangle.
 
 - **Verifiable Presentations** — model + signing/verification for VP 2.0
-  (#TBD)
+  (#16)
 - **Wallet core** — storage, retrieval, consent-scoped sharing of credentials
-  (#TBD)
+  (#17)
 - **Offline verification** — cached status lists and revocation windows
-  (#TBD)
+  (#18)
 
 ## Phase 4 — Ecosystem
 
 - **Batch issuance & templates** — issue thousands of credentials from a
-  template (#TBD)
+  template (#19)
 - **PDF bridge** — embed/verify Data Integrity proofs in PDF/A documents
-  (#TBD)
-- **TypeScript SDK** — typed client over the REST API (#TBD)
-- **Python SDK** — same surface for data-science/gov workflows (#TBD)
+  (#20)
+- **TypeScript SDK** — typed client over the REST API (#21)
+- **Python SDK** — same surface for data-science/gov workflows (#22)
 - **Threat model & security hardening** — published STRIDE analysis, fuzzing
-  the parsers (#TBD)
+  the parsers (#23)
 
 ## Principles (inherited from RFC 0001)
 
