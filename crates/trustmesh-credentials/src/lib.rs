@@ -13,7 +13,9 @@ use serde_json::{Map, Value};
 pub use credential::Credential;
 pub use error::Error;
 pub use issuer::Issuer;
-pub use proof::Proof;
+pub use proof::{
+    Proof, ASSERTION_METHOD_PURPOSE, DATA_INTEGRITY_PROOF_TYPE, EDDSA_JCS_2022, EDDSA_RDFC_2022,
+};
 pub use status::StatusListEntry;
 pub use subject::Subject;
 
