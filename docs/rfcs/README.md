@@ -33,3 +33,4 @@ with identical behavior.
 | [0004](0004-jcs-conformance.md) | JCS conformance vectors in CI | Proposed |
 | [0005](0005-verifier-pipeline.md) | Staged verifier pipeline | Proposed |
 | [0006](0006-bitstring-status-list.md) | Bitstring Status List checking | Proposed |
+| [0007](0007-json-schema-validation.md) | JSON Schema claim validation | Proposed |

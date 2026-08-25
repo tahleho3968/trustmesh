@@ -10,10 +10,11 @@ repository.workspace = true
 trustmesh-credentials.workspace = true
 trustmesh-issuer.workspace = true
 serde.workspace = true
+serde_json.workspace = true
+jsonschema = "0.51"
 
 [dev-dependencies]
 trustmesh-crypto.workspace = true
-serde_json.workspace = true
 chrono.workspace = true
 
 [lints]
