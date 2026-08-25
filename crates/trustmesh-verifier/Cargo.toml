@@ -1,0 +1,20 @@
+[package]
+name = "trustmesh-verifier"
+description = "Staged credential verification for TrustMesh: structural, proof, status, and trust-policy checks with serializable per-stage results."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+trustmesh-credentials.workspace = true
+trustmesh-issuer.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+trustmesh-crypto.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+
+[lints]
+workspace = true

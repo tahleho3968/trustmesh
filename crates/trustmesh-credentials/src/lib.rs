@@ -16,7 +16,7 @@ pub use issuer::Issuer;
 pub use proof::{
     Proof, ASSERTION_METHOD_PURPOSE, DATA_INTEGRITY_PROOF_TYPE, EDDSA_JCS_2022, EDDSA_RDFC_2022,
 };
-pub use status::StatusListEntry;
+pub use status::{StatusListEntry, BITSTRING_STATUS_LIST_ENTRY_TYPE};
 pub use subject::Subject;
 
 pub const BASE_CONTEXT: &str = "https://www.w3.org/ns/credentials/v2";
