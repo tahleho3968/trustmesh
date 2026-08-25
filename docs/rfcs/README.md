@@ -31,3 +31,4 @@ with identical behavior.
 | [0002](0002-credential-model.md) | Credential model | Accepted |
 | [0003](0003-credential-issuer.md) | Credential issuer (`eddsa-jcs-2022`) | Accepted |
 | [0004](0004-jcs-conformance.md) | JCS conformance vectors in CI | Proposed |
+| [0005](0005-verifier-pipeline.md) | Staged verifier pipeline | Proposed |

@@ -36,13 +36,14 @@ structural: true, proof: true
 
 ## What exists today
 
-Three small, independently auditable crates:
+Four small, independently auditable crates:
 
 | Crate | What it does |
 |-------|--------------|
 | [`trustmesh-crypto`](crates/trustmesh-crypto) | Ed25519 signing/verification, Multikey encoding, SHA-256 |
 | [`trustmesh-credentials`](crates/trustmesh-credentials) | VC 2.0 data model with serde and structural validation |
 | [`trustmesh-issuer`](crates/trustmesh-issuer) | Sign credentials (`eddsa-jcs-2022`), verify proofs |
+| [`trustmesh-verifier`](crates/trustmesh-verifier) | Staged verification pipeline: structural → proof → status → trust policy |
 
 ```rust
 use trustmesh_credentials::{Credential, Subject};
