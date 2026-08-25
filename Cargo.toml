@@ -5,6 +5,7 @@ members = [
     "crates/trustmesh-credentials",
     "crates/trustmesh-issuer",
     "crates/trustmesh-verifier",
+    "crates/trustmesh-cli",
 ]
 
 [workspace.package]
