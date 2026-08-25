@@ -1,7 +1,8 @@
 use std::collections::HashSet;
 
 use trustmesh_credentials::{Status, BITSTRING_STATUS_LIST_ENTRY_TYPE};
-use trustmesh_issuer::verify_credential;
+use trustmesh_crypto::{DidKeyResolver, DidResolver};
+use trustmesh_issuer::verify_credential_with;
 
 use crate::pipeline::{Verdict, VerificationContext, VerificationStage};
 
@@ -25,7 +26,26 @@ impl VerificationStage for StructuralStage {
 /// Verifies the `eddsa-jcs-2022` Data Integrity proof by delegating to
 /// `trustmesh-issuer`. Cryptosuite and proof-purpose mismatches surface as
 /// failures with the underlying reason.
-pub struct ProofStage;
+///
+/// By default uses [`DidKeyResolver`]. Supply a custom resolver via
+/// [`ProofStage::with_resolver`] to support `did:web` or other methods.
+pub struct ProofStage {
+    resolver: Box<dyn DidResolver>,
+}
+
+impl Default for ProofStage {
+    fn default() -> Self {
+        Self {
+            resolver: Box::new(DidKeyResolver),
+        }
+    }
+}
+
+impl ProofStage {
+    pub fn with_resolver(resolver: Box<dyn DidResolver>) -> Self {
+        Self { resolver }
+    }
+}
 
 impl VerificationStage for ProofStage {
     fn name(&self) -> &'static str {
@@ -33,7 +53,7 @@ impl VerificationStage for ProofStage {
     }
 
     fn check(&self, ctx: &VerificationContext<'_>) -> Verdict {
-        match verify_credential(ctx.credential()) {
+        match verify_credential_with(ctx.credential(), self.resolver.as_ref()) {
             Ok(outcome) if outcome.proof => Verdict::Pass,
             Ok(_) => Verdict::Fail("cryptographic proof verification failed".into()),
             Err(error) => Verdict::Fail(error.to_string()),
@@ -172,13 +192,16 @@ mod tests {
         let (issuer, mut credential) = signed_credential();
 
         let ctx = VerificationContext::new(&credential);
-        assert_eq!(ProofStage.check(&ctx), Verdict::Pass);
+        assert_eq!(ProofStage::default().check(&ctx), Verdict::Pass);
 
         credential.credential_subject[0]
             .claims
             .insert("alumniOf".into(), serde_json::json!("Fake University"));
         let ctx = VerificationContext::new(&credential);
-        assert!(matches!(ProofStage.check(&ctx), Verdict::Fail(_)));
+        assert!(matches!(
+            ProofStage::default().check(&ctx),
+            Verdict::Fail(_)
+        ));
 
         let unsigned = Credential::builder()
             .context("https://www.w3.org/ns/credentials/examples/v2")
@@ -189,7 +212,7 @@ mod tests {
             .unwrap();
         let ctx = VerificationContext::new(&unsigned);
         assert!(
-            matches!(ProofStage.check(&ctx), Verdict::Fail(reason) if reason.contains("no proof"))
+            matches!(ProofStage::default().check(&ctx), Verdict::Fail(reason) if reason.contains("no proof"))
         );
     }
 
