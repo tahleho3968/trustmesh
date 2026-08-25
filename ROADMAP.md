@@ -27,7 +27,7 @@ this?*
 - **JSON Schema claim validation** — optional schema enforcement on subject
   claims at issuance and verification (#8) ✅
 - **Pluggable DID resolution** — trait-based resolver; `did:key` first,
-  `did:web` next (#9)
+  `did:web` next (#9) ✅
 - **Bitstring Status List** — encode/decode + status checks for revocation
   (#10) ✅
 

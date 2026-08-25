@@ -125,7 +125,7 @@ impl VerificationPipeline {
     pub fn default_pipeline() -> Self {
         Self::new()
             .with_stage(Box::new(super::stages::StructuralStage))
-            .with_stage(Box::new(super::stages::ProofStage))
+            .with_stage(Box::new(super::stages::ProofStage::default()))
             .with_stage(Box::new(super::stages::StatusStage))
     }
 

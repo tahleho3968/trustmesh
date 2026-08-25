@@ -231,7 +231,7 @@ mod tests {
 
         let pipeline = VerificationPipeline::new()
             .with_stage(Box::new(StructuralStage))
-            .with_stage(Box::new(ProofStage))
+            .with_stage(Box::new(ProofStage::default()))
             .with_stage(Box::new(stage()))
             .with_stage(Box::new(TrustPolicyStage::allowing([issuer.did()])));
 
