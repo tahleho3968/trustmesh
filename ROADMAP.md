@@ -12,6 +12,7 @@ lands through a focused PR referencing an RFC or an issue.
 | Crypto core (Ed25519, Multikey, SHA-256) | `trustmesh-crypto` | ✅ shipped |
 | Credential model (VC 2.0 structs, serde, validation) | `trustmesh-credentials` | ✅ shipped |
 | Issuer (eddsa-jcs-2022 signing + verification) | `trustmesh-issuer` | ✅ shipped |
+| Verifier pipeline (structural → proof → status → trust policy) | `trustmesh-verifier` | ✅ shipped |
 | Everything below | — | 🔜 see phases |
 
 ## Phase 1 — Trustworthy verification
@@ -20,7 +21,7 @@ The issuer can sign; the next question a relying party asks is *should I trust
 this?*
 
 - **Verifier engine pipeline** — structured verification: structural → proof →
-  status → trust policy, with per-stage results (#6)
+  status → trust policy, with per-stage results (#6) ✅
 - **JCS conformance vectors** — RFC 8785 test suite wired into CI so
   canonicalization drift is impossible to merge (#7)
 - **JSON Schema claim validation** — optional schema enforcement on subject
