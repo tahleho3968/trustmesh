@@ -37,7 +37,7 @@ Raw crates are for builders; these make TrustMesh operable.
 
 - **CLI skeleton** (`trustmesh` binary) — keygen / issue / verify from the
   terminal (#11) ✅
-- **REST API** — axum service exposing issue/verify/status endpoints (#12)
+- **REST API** — axum service exposing issue/verify/status endpoints (#12) ✅
 - **Docker packaging** — one-command self-hosted verifier (#13)
 - **QR code + static web verifier** — scan-to-verify without installing
   anything (#14)
