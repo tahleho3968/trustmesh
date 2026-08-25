@@ -37,10 +37,12 @@
 //! Design decisions are recorded in RFC 0005 (`docs/rfcs/`).
 
 mod pipeline;
+mod schema;
 mod stages;
 
 pub use pipeline::{
     StageOutcome, Verdict, VerificationContext, VerificationPipeline, VerificationResult,
     VerificationStage,
 };
+pub use schema::SchemaStage;
 pub use stages::{ProofStage, StatusStage, StructuralStage, TrustPolicyStage};

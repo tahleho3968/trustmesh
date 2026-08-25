@@ -10,7 +10,7 @@ mod subject;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-pub use credential::Credential;
+pub use credential::{Credential, CredentialSchema};
 pub use error::Error;
 pub use issuer::Issuer;
 pub use proof::{
