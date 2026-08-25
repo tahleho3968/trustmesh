@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use trustmesh_credentials::Credential;
+use trustmesh_credentials::{BitstringStatusList, Credential};
 
 /// Verdict of a single pipeline stage.
 ///
@@ -67,20 +67,35 @@ impl VerificationResult {
     }
 }
 
-/// Everything a stage may inspect. Grows additively as later phases land
-/// (resolved DID documents, fetched status lists); constructors keep this
-/// non-breaking.
+/// Everything a stage may inspect. Status lists are supplied by the caller
+/// because fetching (and proof-checking) them is an I/O and trust decision
+/// outside this crate; the context grows additively as later phases land.
 pub struct VerificationContext<'a> {
     credential: &'a Credential,
+    status_lists: Vec<BitstringStatusList>,
 }
 
 impl<'a> VerificationContext<'a> {
     pub fn new(credential: &'a Credential) -> Self {
-        Self { credential }
+        Self {
+            credential,
+            status_lists: Vec::new(),
+        }
+    }
+
+    /// Supplies a fetched status list credential so the status stage can
+    /// return real verdicts for entries pointing at it.
+    pub fn with_status_list(mut self, status_list: BitstringStatusList) -> Self {
+        self.status_lists.push(status_list);
+        self
     }
 
     pub fn credential(&self) -> &Credential {
         self.credential
+    }
+
+    pub fn status_lists(&self) -> &[BitstringStatusList] {
+        &self.status_lists
     }
 }
 
@@ -125,12 +140,18 @@ impl VerificationPipeline {
 
     pub fn verify(&self, credential: &Credential) -> VerificationResult {
         let ctx = VerificationContext::new(credential);
+        self.verify_with(&ctx)
+    }
+
+    /// Runs the pipeline against a pre-built context, for callers supplying
+    /// fetched status lists (or future context additions).
+    pub fn verify_with(&self, ctx: &VerificationContext<'_>) -> VerificationResult {
         let outcomes = self
             .stages
             .iter()
             .map(|stage| StageOutcome {
                 stage: stage.name().to_owned(),
-                verdict: stage.check(&ctx),
+                verdict: stage.check(ctx),
             })
             .collect();
         VerificationResult::new(outcomes)

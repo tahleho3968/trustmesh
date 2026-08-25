@@ -32,3 +32,4 @@ with identical behavior.
 | [0003](0003-credential-issuer.md) | Credential issuer (`eddsa-jcs-2022`) | Accepted |
 | [0004](0004-jcs-conformance.md) | JCS conformance vectors in CI | Proposed |
 | [0005](0005-verifier-pipeline.md) | Staged verifier pipeline | Proposed |
+| [0006](0006-bitstring-status-list.md) | Bitstring Status List checking | Proposed |

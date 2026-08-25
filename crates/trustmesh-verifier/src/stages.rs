@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use trustmesh_credentials::BITSTRING_STATUS_LIST_ENTRY_TYPE;
+use trustmesh_credentials::{Status, BITSTRING_STATUS_LIST_ENTRY_TYPE};
 use trustmesh_issuer::verify_credential;
 
 use crate::pipeline::{Verdict, VerificationContext, VerificationStage};
@@ -41,10 +41,13 @@ impl VerificationStage for ProofStage {
     }
 }
 
-/// Validates the shape of any `credentialStatus` entry. Revocation checking
-/// itself arrives with Bitstring Status List support (#10): a well-formed
-/// entry is reported as [`Verdict::Inconclusive`] rather than silently
-/// passing as unrevoked.
+/// Checks the credential's `credentialStatus` entry against a status list.
+///
+/// Status lists are fetched (and their proofs checked) by the caller and
+/// supplied on [`VerificationContext::with_status_list`]. An entry whose list
+/// was not supplied yields [`Verdict::Inconclusive`] — never a silent pass.
+/// Only single-bit entries are supported, as permitted by the W3C Bitstring
+/// Status List conformance clause; anything else fails explicitly.
 pub struct StatusStage;
 
 impl VerificationStage for StatusStage {
@@ -53,18 +56,34 @@ impl VerificationStage for StatusStage {
     }
 
     fn check(&self, ctx: &VerificationContext<'_>) -> Verdict {
-        match ctx.credential().bitstring_status() {
-            Ok(None) => Verdict::Pass,
-            Ok(Some(entry)) if entry.status_type == BITSTRING_STATUS_LIST_ENTRY_TYPE => {
-                Verdict::Inconclusive(
-                    "Bitstring Status List revocation checking is not implemented yet (#10)".into(),
-                )
+        let entry = match ctx.credential().bitstring_status() {
+            Ok(None) => return Verdict::Pass,
+            Ok(Some(entry)) if entry.status_type == BITSTRING_STATUS_LIST_ENTRY_TYPE => entry,
+            Ok(Some(entry)) => {
+                return Verdict::Fail(format!(
+                    "unsupported credentialStatus type: {}",
+                    entry.status_type
+                ))
             }
-            Ok(Some(entry)) => Verdict::Fail(format!(
-                "unsupported credentialStatus type: {}",
-                entry.status_type
-            )),
-            Err(error) => Verdict::Fail(format!("malformed credentialStatus: {error}")),
+            Err(error) => return Verdict::Fail(format!("malformed credentialStatus: {error}")),
+        };
+
+        let supplied = ctx
+            .status_lists()
+            .iter()
+            .find(|list| list.id.as_deref() == Some(entry.status_list_credential.as_str()));
+        let Some(list) = supplied else {
+            return Verdict::Inconclusive(format!(
+                "status list {} was not provided to this verifier",
+                entry.status_list_credential
+            ));
+        };
+
+        match list.expand().and_then(|expanded| expanded.check(&entry)) {
+            Ok(Status::Active) => Verdict::Pass,
+            Ok(Status::Revoked) => Verdict::Fail("credential has been revoked".into()),
+            Ok(Status::Suspended) => Verdict::Fail("credential is currently suspended".into()),
+            Err(error) => Verdict::Fail(error.to_string()),
         }
     }
 }
@@ -110,7 +129,7 @@ impl VerificationStage for TrustPolicyStage {
 #[cfg(test)]
 mod tests {
     use chrono::TimeZone;
-    use trustmesh_credentials::{Credential, Subject};
+    use trustmesh_credentials::{BitstringStatusList, Credential, Subject};
     use trustmesh_crypto::SigningKey;
     use trustmesh_issuer::CredentialIssuer;
 
@@ -175,7 +194,7 @@ mod tests {
     }
 
     #[test]
-    fn status_passes_without_entry_flags_malformed_and_marks_wellformed_inconclusive() {
+    fn status_passes_without_entry_flags_malformed_and_marks_unsupplied_inconclusive() {
         let (_, credential) = signed_credential();
         let mut no_status = credential.clone();
         assert!(matches!(
@@ -199,11 +218,91 @@ mod tests {
             ))
             .unwrap(),
         );
-        assert_eq!(
+        assert!(matches!(
             StatusStage.check(&VerificationContext::new(&with_status)),
-            Verdict::Inconclusive(
-                "Bitstring Status List revocation checking is not implemented yet (#10)".into()
-            )
+            Verdict::Inconclusive(reason) if reason.contains("not provided")
+        ));
+    }
+
+    fn supplied_list(purpose: &str, list_id: &str, set_indexes: &[u64]) -> BitstringStatusList {
+        use trustmesh_credentials::compress_bitstring;
+
+        let mut bytes = vec![0u8; 16_384];
+        for &index in set_indexes {
+            bytes[(index / 8) as usize] |= 0x80u8 >> (index % 8);
+        }
+        BitstringStatusList {
+            id: Some(list_id.to_owned()),
+            status_purpose: purpose.to_owned(),
+            encoded_list: compress_bitstring(&bytes).expect("list compresses"),
+        }
+    }
+
+    fn credential_with_entry(entry: trustmesh_credentials::StatusListEntry) -> Credential {
+        let issuer = CredentialIssuer::new(trustmesh_crypto::SigningKey::from_bytes(&[7u8; 32]));
+        let mut draft = Credential::builder()
+            .context("https://www.w3.org/ns/credentials/examples/v2")
+            .credential_type("ExampleAlumniCredential")
+            .issuer(issuer.did().to_owned())
+            .subject(Subject::new().with_id("did:example:graduate-1"))
+            .build()
+            .unwrap();
+        draft.credential_status = Some(serde_json::to_value(&entry).unwrap());
+        issuer.issue_at(draft, CREATED()).unwrap()
+    }
+
+    #[test]
+    fn supplied_list_yields_real_revocation_verdicts() {
+        let entry = trustmesh_credentials::StatusListEntry::bitstring(
+            "#94567",
+            "revocation",
+            "94567",
+            "https://university.example/status/3",
+        );
+        let mut credential = credential_with_entry(entry.clone());
+        credential.credential_status = Some(serde_json::to_value(entry).expect("entry serializes"));
+
+        // Active: bit unset in the matching list.
+        let active_list = supplied_list("revocation", "https://university.example/status/3", &[]);
+        assert_eq!(
+            StatusStage.check(&VerificationContext::new(&credential).with_status_list(active_list)),
+            Verdict::Pass
+        );
+
+        // Revoked: bit set.
+        let revoked_list = supplied_list(
+            "revocation",
+            "https://university.example/status/3",
+            &[94_567],
+        );
+        assert_eq!(
+            StatusStage
+                .check(&VerificationContext::new(&credential).with_status_list(revoked_list)),
+            Verdict::Fail("credential has been revoked".into())
+        );
+
+        // A different list URL does not satisfy the entry.
+        let unrelated_list = supplied_list("revocation", "https://other.example/list", &[94_567]);
+        assert!(matches!(
+            StatusStage
+                .check(&VerificationContext::new(&credential).with_status_list(unrelated_list)),
+            Verdict::Inconclusive(_)
+        ));
+    }
+
+    #[test]
+    fn suspension_purpose_fails_when_set() {
+        use trustmesh_credentials::StatusListEntry;
+
+        let entry = StatusListEntry::bitstring("#23452", "suspension", "23452", "https://status/4");
+        let mut credential = credential_with_entry(entry.clone());
+        credential.credential_status = Some(serde_json::to_value(entry).unwrap());
+
+        let suspended_list = supplied_list("suspension", "https://status/4", &[23_452]);
+        assert_eq!(
+            StatusStage
+                .check(&VerificationContext::new(&credential).with_status_list(suspended_list)),
+            Verdict::Fail("credential is currently suspended".into())
         );
     }
 
