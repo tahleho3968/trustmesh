@@ -1,0 +1,24 @@
+[package]
+name = "trustmesh"
+description = "CLI for issuing, holding, and verifying W3C Verifiable Credentials."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "trustmesh"
+path = "src/main.rs"
+
+[dependencies]
+trustmesh-crypto.workspace = true
+trustmesh-credentials.workspace = true
+trustmesh-issuer.workspace = true
+trustmesh-verifier.workspace = true
+clap = { version = "4", features = ["derive"] }
+serde_json.workspace = true
+anyhow = "1"
+hex = "0.4"
+
+[lints]
+workspace = true
