@@ -24,6 +24,15 @@ impl Subject {
         self.claims.insert(key.into(), value);
         self
     }
+
+    pub fn with_claims(mut self, claims: Value) -> Self {
+        if let Value::Object(map) = claims {
+            for (k, v) in map {
+                self.claims.insert(k, v);
+            }
+        }
+        self
+    }
 }
 
 #[cfg(test)]

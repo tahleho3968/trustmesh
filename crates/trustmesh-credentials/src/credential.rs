@@ -8,6 +8,19 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
+/// A reference to a schema that constrains the credential's subject claims.
+///
+/// In W3C VC 2.0 this is the `credentialSchema` property. The `id` locates
+/// the schema; `type` identifies its format. The actual schema content is
+/// not carried in this struct — callers provide it to the verifier.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialSchema {
+    pub id: String,
+    #[serde(rename = "type")]
+    pub schema_type: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Credential {
@@ -46,6 +59,9 @@ pub struct Credential {
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub credential_status: Option<Value>,
+
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential_schema: Option<CredentialSchema>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub proof: Option<Proof>,
@@ -131,6 +147,7 @@ pub struct CredentialBuilder {
     valid_from: Option<DateTime<Utc>>,
     valid_until: Option<DateTime<Utc>>,
     subjects: Vec<Subject>,
+    schema: Option<CredentialSchema>,
 }
 
 impl CredentialBuilder {
@@ -172,6 +189,14 @@ impl CredentialBuilder {
         self
     }
 
+    pub fn schema(mut self, id: impl Into<String>, type_: impl Into<String>) -> Self {
+        self.schema = Some(CredentialSchema {
+            id: id.into(),
+            schema_type: type_.into(),
+        });
+        self
+    }
+
     pub fn build(self) -> Result<Credential, Error> {
         let mut context = self.context;
         if !matches!(context.first(), Some(Context::Url(url)) if url == BASE_CONTEXT) {
@@ -192,6 +217,7 @@ impl CredentialBuilder {
             valid_until: self.valid_until,
             credential_subject: self.subjects,
             credential_status: None,
+            credential_schema: self.schema,
             proof: None,
             extensions: Map::new(),
         };
