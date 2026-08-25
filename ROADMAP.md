@@ -23,13 +23,13 @@ this?*
 - **Verifier engine pipeline** — structured verification: structural → proof →
   status → trust policy, with per-stage results (#6) ✅
 - **JCS conformance vectors** — RFC 8785 test suite wired into CI so
-  canonicalization drift is impossible to merge (#7)
+  canonicalization drift is impossible to merge (#7) ✅
 - **JSON Schema claim validation** — optional schema enforcement on subject
   claims at issuance and verification (#8)
 - **Pluggable DID resolution** — trait-based resolver; `did:key` first,
   `did:web` next (#9)
 - **Bitstring Status List** — encode/decode + status checks for revocation
-  (#10)
+  (#10) ✅
 
 ## Phase 2 — Making it usable
 

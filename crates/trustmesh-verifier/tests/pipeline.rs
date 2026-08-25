@@ -2,7 +2,7 @@
 //! serializable results, and extensibility.
 
 use chrono::TimeZone;
-use trustmesh_credentials::{Credential, Subject};
+use trustmesh_credentials::{BitstringStatusList, Credential, Subject};
 use trustmesh_crypto::SigningKey;
 use trustmesh_issuer::CredentialIssuer;
 use trustmesh_verifier::{
@@ -128,5 +128,83 @@ fn custom_stages_compose_with_builtin_ones() {
     assert!(matches!(
         &result.stages()[0].verdict,
         Verdict::Inconclusive(_)
+    ));
+}
+
+const STATUS_LIST_URL: &str = "https://university.example/status/3";
+const ENTRY_INDEX: u64 = 94_567;
+
+/// Issues a credential pointing at a status list, and returns it alongside
+/// the list as it would be published (revoked flag controls the entry's bit).
+fn credential_and_published_list(revoked: bool) -> (Credential, BitstringStatusList) {
+    use trustmesh_credentials::{compress_bitstring, StatusListEntry};
+
+    let issuer = CredentialIssuer::new(SigningKey::from_bytes(&[5u8; 32]));
+    let entry = StatusListEntry::bitstring(
+        format!("{STATUS_LIST_URL}#{ENTRY_INDEX}"),
+        "revocation",
+        ENTRY_INDEX.to_string(),
+        STATUS_LIST_URL,
+    );
+    let draft = Credential::builder()
+        .context("https://www.w3.org/ns/credentials/examples/v2")
+        .credential_type("ExampleAlumniCredential")
+        .issuer(issuer.did().to_owned())
+        .subject(Subject::new().with_id("did:example:graduate-1"))
+        .build()
+        .expect("valid draft");
+    let mut draft = draft;
+    draft.credential_status = Some(serde_json::to_value(&entry).unwrap());
+    let signed = issuer.issue_at(draft, CREATED()).expect("issues");
+
+    let mut bits = vec![0u8; 16_384];
+    if revoked {
+        bits[(ENTRY_INDEX / 8) as usize] |= 0x80u8 >> (ENTRY_INDEX % 8);
+    }
+    let list = BitstringStatusList {
+        id: Some(STATUS_LIST_URL.to_owned()),
+        status_purpose: "revocation".to_owned(),
+        encoded_list: compress_bitstring(&bits).expect("list compresses"),
+    };
+    (signed, list)
+}
+
+#[test]
+fn pipeline_rejects_revoked_credential_when_status_list_supplied() {
+    let (credential, list) = credential_and_published_list(true);
+
+    let ctx = VerificationContext::new(&credential).with_status_list(list);
+    let result = VerificationPipeline::default_pipeline().verify_with(&ctx);
+
+    assert!(!result.valid());
+    let status_failure = result
+        .failures()
+        .find(|outcome| outcome.stage == "status")
+        .expect("status stage must fail");
+    assert_eq!(
+        status_failure.verdict,
+        Verdict::Fail("credential has been revoked".into())
+    );
+}
+
+#[test]
+fn pipeline_accepts_active_credential_whose_status_list_was_supplied() {
+    let (credential, list) = credential_and_published_list(false);
+
+    let ctx = VerificationContext::new(&credential).with_status_list(list);
+    let result = VerificationPipeline::default_pipeline().verify_with(&ctx);
+
+    assert!(result.valid(), "{result:?}");
+}
+
+#[test]
+fn unsupplied_status_list_stays_inconclusive_not_invalid() {
+    let (credential, _) = credential_and_published_list(true);
+
+    let result = VerificationPipeline::default_pipeline().verify(&credential);
+
+    assert!(matches!(
+        &result.stages()[2].verdict,
+        Verdict::Inconclusive(reason) if reason.contains(STATUS_LIST_URL)
     ));
 }
