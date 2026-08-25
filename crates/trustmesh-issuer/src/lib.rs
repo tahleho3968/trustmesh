@@ -6,7 +6,7 @@ mod verifier;
 
 pub use error::Error;
 pub use issuer::CredentialIssuer;
-pub use verifier::{verify_credential, VerificationOutcome};
+pub use verifier::{verify_credential, verify_credential_with, VerificationOutcome};
 
 pub const DATA_INTEGRITY_PROOF_TYPE: &str = "DataIntegrityProof";
 pub const EDDSA_JCS_2022: &str = "eddsa-jcs-2022";

@@ -3,7 +3,7 @@
 
 use chrono::TimeZone;
 use trustmesh_credentials::{BitstringStatusList, Credential, Subject};
-use trustmesh_crypto::SigningKey;
+use trustmesh_crypto::{CompositeResolver, DidKeyResolver, SigningKey};
 use trustmesh_issuer::CredentialIssuer;
 use trustmesh_verifier::{
     ProofStage, TrustPolicyStage, Verdict, VerificationContext, VerificationPipeline,
@@ -120,7 +120,7 @@ fn custom_stages_compose_with_builtin_ones() {
     let (_, credential) = signed_credential();
     let result = VerificationPipeline::new()
         .with_stage(Box::new(FlakyStatusStage))
-        .with_stage(Box::new(ProofStage))
+        .with_stage(Box::new(ProofStage::default()))
         .verify(&credential);
 
     assert_eq!(result.stage_names(), ["custom_status", "proof"]);
@@ -207,4 +207,16 @@ fn unsupplied_status_list_stays_inconclusive_not_invalid() {
         &result.stages()[2].verdict,
         Verdict::Inconclusive(reason) if reason.contains(STATUS_LIST_URL)
     ));
+}
+
+#[test]
+fn proof_stage_accepts_custom_composite_resolver() {
+    let (_, credential) = signed_credential();
+    let pipeline = VerificationPipeline::new().with_stage(Box::new(ProofStage::with_resolver(
+        Box::new(CompositeResolver::new(vec![Box::new(DidKeyResolver)])),
+    )));
+
+    let result = pipeline.verify(&credential);
+    assert!(result.valid(), "{result:?}");
+    assert_eq!(result.stage_names(), ["proof"]);
 }

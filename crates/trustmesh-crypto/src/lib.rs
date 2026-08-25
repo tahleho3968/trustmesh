@@ -3,6 +3,8 @@ use core::fmt;
 use ed25519_dalek::Signer;
 use sha2::{Digest, Sha256};
 
+pub mod did;
+pub use did::{CompositeResolver, DidError, DidKeyResolver, DidResolver, DidWebResolver};
 pub use ed25519_dalek::Signature;
 
 const MULTIKEY_MULTIBASE_PREFIX: char = 'z';

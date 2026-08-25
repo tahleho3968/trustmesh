@@ -1,11 +1,9 @@
 use serde_json::Value;
 use trustmesh_credentials::Credential;
-use trustmesh_crypto::{sha256, Signature, VerifyingKey};
+use trustmesh_crypto::{sha256, DidKeyResolver, DidResolver, Signature};
 
 use crate::canonical::canonicalize;
-use crate::{
-    Error, ASSERTION_METHOD_PURPOSE, DATA_INTEGRITY_PROOF_TYPE, DID_KEY_PREFIX, EDDSA_JCS_2022,
-};
+use crate::{Error, ASSERTION_METHOD_PURPOSE, DATA_INTEGRITY_PROOF_TYPE, EDDSA_JCS_2022};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VerificationOutcome {
@@ -14,6 +12,13 @@ pub struct VerificationOutcome {
 }
 
 pub fn verify_credential(credential: &Credential) -> Result<VerificationOutcome, Error> {
+    verify_credential_with(credential, &DidKeyResolver)
+}
+
+pub fn verify_credential_with(
+    credential: &Credential,
+    resolver: &dyn DidResolver,
+) -> Result<VerificationOutcome, Error> {
     let structural = credential.validate().is_ok();
 
     let proof = credential.proof.as_ref().ok_or(Error::MissingProof)?;
@@ -31,7 +36,9 @@ pub fn verify_credential(credential: &Credential) -> Result<VerificationOutcome,
         return Err(Error::Verification);
     }
 
-    let verifying_key = verifying_key_from_method(&proof.verification_method)?;
+    let verifying_key = resolver
+        .resolve(&proof.verification_method)
+        .map_err(|_| Error::InvalidVerificationMethod)?;
     let signature = signature_from_proof_value(credential)?;
 
     let document = serde_json::to_value(without_proof(credential))
@@ -62,15 +69,6 @@ fn without_proof(credential: &Credential) -> Credential {
     let mut clone = credential.clone();
     clone.proof = None;
     clone
-}
-
-fn verifying_key_from_method(method: &str) -> Result<VerifyingKey, Error> {
-    let multikey = method
-        .strip_prefix(DID_KEY_PREFIX)
-        .and_then(|rest| rest.split('#').next_back())
-        .filter(|fragment| !fragment.is_empty())
-        .ok_or(Error::InvalidVerificationMethod)?;
-    VerifyingKey::from_multikey(multikey).map_err(|_| Error::InvalidVerificationMethod)
 }
 
 fn signature_from_proof_value(credential: &Credential) -> Result<Signature, Error> {

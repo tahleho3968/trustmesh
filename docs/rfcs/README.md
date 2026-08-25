@@ -34,3 +34,4 @@ with identical behavior.
 | [0005](0005-verifier-pipeline.md) | Staged verifier pipeline | Proposed |
 | [0006](0006-bitstring-status-list.md) | Bitstring Status List checking | Proposed |
 | [0007](0007-json-schema-validation.md) | JSON Schema claim validation | Proposed |
+| [0008](0008-did-resolver.md) | Pluggable DID resolution | Proposed |
