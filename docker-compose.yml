@@ -1,0 +1,9 @@
+services:
+  api:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - TRUSTMESH_SEED=${TRUSTMESH_SEED:-}
+      - RUST_LOG=trustmesh_api=info,tower_http=info
+    restart: unless-stopped
