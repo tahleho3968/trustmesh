@@ -1,0 +1,29 @@
+# Version control
+.git
+.gitignore
+
+# Rust build output
+target/
+
+# Local environment & secrets
+.env
+.env.*
+
+# Editor / OS junk
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# CI
+.github/
+
+# Docker (avoid recursive builds)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Docs
+docs/
+*.md

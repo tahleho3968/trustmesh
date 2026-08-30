@@ -34,6 +34,25 @@ structural: true, proof: true
 }
 ```
 
+### Run the API with Docker
+
+One-command self-hosted verifier (builds the release binary, serves on `:3000`):
+
+```console
+$ docker compose up -d
+$ curl localhost:3000/health
+{"status":"ok","version":"0.1.0"}
+```
+
+Persist the issuer identity by passing a hex-encoded 32-byte seed:
+
+```console
+$ TRUSTMESH_SEED=$(openssl rand -hex 32) docker compose up -d
+```
+
+Without a seed the API generates an ephemeral key each start (and logs its DID), which is
+fine for testing but means credentials stop verifying on restart.
+
 ## What exists today
 
 Four small, independently auditable crates:
