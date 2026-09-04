@@ -5,9 +5,7 @@ use base64::Engine;
 use clap::{Args, Parser, Subcommand};
 use trustmesh_credentials::{Credential, VerifiablePresentation};
 use trustmesh_crypto::SigningKey;
-use trustmesh_issuer::{
-    verify_presentation, CredentialIssuer, PresentationHolder,
-};
+use trustmesh_issuer::{verify_presentation, CredentialIssuer, PresentationHolder};
 use trustmesh_verifier::{
     ProofStage, StatusStage, StructuralStage, TrustPolicyStage, VerificationPipeline,
     VerificationStage,
@@ -116,10 +114,15 @@ fn main() -> Result<()> {
         } => cmd_verify(credential, trusted_issuers),
         Command::Qr { credential, url } => cmd_qr(credential, url),
         Command::Vp(vp) => match vp.command {
-            VpCommand::Sign { key, credentials, out } => cmd_vp_sign(key, credentials, out),
-            VpCommand::Verify { presentation, trusted_issuers } => {
-                cmd_vp_verify(presentation, trusted_issuers)
-            }
+            VpCommand::Sign {
+                key,
+                credentials,
+                out,
+            } => cmd_vp_sign(key, credentials, out),
+            VpCommand::Verify {
+                presentation,
+                trusted_issuers,
+            } => cmd_vp_verify(presentation, trusted_issuers),
         },
     }
 }
@@ -243,7 +246,8 @@ fn cmd_vp_sign(key: PathBuf, credentials: Vec<PathBuf>, out: Option<PathBuf>) ->
     for path in &credentials {
         let json = std::fs::read_to_string(path)
             .with_context(|| format!("reading credential {}", path.display()))?;
-        let value: serde_json::Value = serde_json::from_str(&json).context("parsing credential JSON")?;
+        let value: serde_json::Value =
+            serde_json::from_str(&json).context("parsing credential JSON")?;
         builder = builder.credential(value);
     }
     let draft = builder.build().context("building presentation")?;
@@ -324,5 +328,9 @@ fn cmd_vp_verify(presentation: PathBuf, trusted_issuers: Vec<String>) -> Result<
 }
 
 fn ok(good: bool) -> &'static str {
-    if good { "ok" } else { "FAIL" }
+    if good {
+        "ok"
+    } else {
+        "FAIL"
+    }
 }

@@ -40,11 +40,7 @@ impl VerifiablePresentation {
             _ => return Err(Error::MissingBaseContext),
         }
 
-        if !self
-            .types
-            .iter()
-            .any(|t| t == VERIFIABLE_PRESENTATION_TYPE)
-        {
+        if !self.types.iter().any(|t| t == VERIFIABLE_PRESENTATION_TYPE) {
             return Err(Error::MissingBaseType);
         }
 
@@ -101,10 +97,7 @@ impl PresentationBuilder {
         }
 
         let mut types = self.types;
-        if !types
-            .iter()
-            .any(|t| t == VERIFIABLE_PRESENTATION_TYPE)
-        {
+        if !types.iter().any(|t| t == VERIFIABLE_PRESENTATION_TYPE) {
             types.insert(0, VERIFIABLE_PRESENTATION_TYPE.to_owned());
         }
 
@@ -131,7 +124,9 @@ mod tests {
             .context("https://www.w3.org/ns/credentials/examples/v2")
             .presentation_type("CredentialManagerPresentation")
             .holder("did:example:alice")
-            .credential(Value::String("http://university.example/credentials/3732".into()))
+            .credential(Value::String(
+                "http://university.example/credentials/3732".into(),
+            ))
             .build()
     }
 
@@ -164,7 +159,9 @@ mod tests {
         assert_eq!(presentation.validate(), Err(Error::MissingBaseContext));
 
         presentation.context.push(BASE_CONTEXT.into());
-        presentation.types.retain(|t| t != VERIFIABLE_PRESENTATION_TYPE);
+        presentation
+            .types
+            .retain(|t| t != VERIFIABLE_PRESENTATION_TYPE);
         assert_eq!(presentation.validate(), Err(Error::MissingBaseType));
 
         presentation

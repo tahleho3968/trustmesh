@@ -1,14 +1,10 @@
 use chrono::{DateTime, Utc};
 use serde_json::{json, Value};
-use trustmesh_credentials::{
-    Credential, VerifiablePresentation, AUTHENTICATION_PURPOSE,
-};
+use trustmesh_credentials::{Credential, VerifiablePresentation, AUTHENTICATION_PURPOSE};
 use trustmesh_crypto::{sha256, DidKeyResolver, DidResolver, Signature, SigningKey};
 
 use crate::canonical::canonicalize;
-use crate::{
-    Error, DATA_INTEGRITY_PROOF_TYPE, DID_KEY_PREFIX, EDDSA_JCS_2022,
-};
+use crate::{Error, DATA_INTEGRITY_PROOF_TYPE, DID_KEY_PREFIX, EDDSA_JCS_2022};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PresentationOutcome {
@@ -68,16 +64,21 @@ impl PresentationHolder {
         if presentation.proof.is_some() {
             return Err(Error::AlreadyProven);
         }
-        presentation.holder.get_or_insert_with(|| self.did().to_owned());
+        presentation
+            .holder
+            .get_or_insert_with(|| self.did().to_owned());
 
-        let document = serde_json::to_value(&presentation)
-            .map_err(|e| Error::Serialization(e.to_string()))?;
+        let document =
+            serde_json::to_value(&presentation).map_err(|e| Error::Serialization(e.to_string()))?;
         let proof_config = self.proof_config(&document, created)?;
         let hash_data = hash_data(&document, &proof_config)?;
         let signature = self.signing_key.sign(&hash_data);
 
-        let mut proof =
-            trustmesh_credentials::Proof::data_integrity(EDDSA_JCS_2022, created, &self.verification_method);
+        let mut proof = trustmesh_credentials::Proof::data_integrity(
+            EDDSA_JCS_2022,
+            created,
+            &self.verification_method,
+        );
         proof.proof_purpose = AUTHENTICATION_PURPOSE.to_owned();
         if let Some(context) = document.get("@context") {
             proof.context = Some(
@@ -143,8 +144,8 @@ pub fn verify_presentation_with(
 
     let document = serde_json::to_value(without_proof(presentation))
         .map_err(|e| Error::Serialization(e.to_string()))?;
-    let mut config = serde_json::to_value(proof)
-        .map_err(|e| Error::Serialization(e.to_string()))?;
+    let mut config =
+        serde_json::to_value(proof).map_err(|e| Error::Serialization(e.to_string()))?;
     if let Some(object) = config.as_object_mut() {
         object.remove("proofValue");
     }
@@ -154,8 +155,7 @@ pub fn verify_presentation_with(
 
     let document_bytes =
         canonicalize(&document).map_err(|e| Error::Canonicalization(e.to_string()))?;
-    let config_bytes =
-        canonicalize(&config).map_err(|e| Error::Canonicalization(e.to_string()))?;
+    let config_bytes = canonicalize(&config).map_err(|e| Error::Canonicalization(e.to_string()))?;
     let mut hash_data = sha256(&config_bytes).to_vec();
     hash_data.extend_from_slice(&sha256(&document_bytes));
 
@@ -164,18 +164,20 @@ pub fn verify_presentation_with(
     let credential_results = presentation
         .verifiable_credential
         .iter()
-        .map(|value| match serde_json::from_value::<Credential>(value.clone()) {
-            Ok(credential) => verify_credential_with(&credential, resolver).unwrap_or(
-                VerificationOutcome {
+        .map(
+            |value| match serde_json::from_value::<Credential>(value.clone()) {
+                Ok(credential) => {
+                    verify_credential_with(&credential, resolver).unwrap_or(VerificationOutcome {
+                        structural: false,
+                        proof: false,
+                    })
+                }
+                Err(_) => VerificationOutcome {
                     structural: false,
                     proof: false,
                 },
-            ),
-            Err(_) => VerificationOutcome {
-                structural: false,
-                proof: false,
             },
-        })
+        )
         .collect();
 
     Ok(PresentationOutcome {
