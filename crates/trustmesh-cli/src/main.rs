@@ -2,12 +2,15 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use base64::Engine;
-use clap::{Parser, Subcommand};
-use trustmesh_credentials::Credential;
+use clap::{Args, Parser, Subcommand};
+use trustmesh_credentials::{Credential, VerifiablePresentation};
 use trustmesh_crypto::SigningKey;
-use trustmesh_issuer::CredentialIssuer;
+use trustmesh_issuer::{
+    verify_presentation, CredentialIssuer, PresentationHolder,
+};
 use trustmesh_verifier::{
     ProofStage, StatusStage, StructuralStage, TrustPolicyStage, VerificationPipeline,
+    VerificationStage,
 };
 
 #[derive(Parser)]
@@ -61,6 +64,44 @@ enum Command {
         #[arg(long, default_value = "http://localhost:3000")]
         url: String,
     },
+
+    /// Create or verify a Verifiable Presentation
+    Vp(Vp),
+}
+
+#[derive(Args)]
+struct Vp {
+    #[command(subcommand)]
+    command: VpCommand,
+}
+
+#[derive(Subcommand)]
+enum VpCommand {
+    /// Wrap one or more credentials into a signed Verifiable Presentation
+    Sign {
+        /// Path to the holder's signing key (32-byte seed, hex-encoded)
+        #[arg(long)]
+        key: PathBuf,
+
+        /// Paths to credential JSON files (repeatable)
+        #[arg(long = "credential")]
+        credentials: Vec<PathBuf>,
+
+        /// Output file (defaults to stdout)
+        #[arg(long)]
+        out: Option<PathBuf>,
+    },
+
+    /// Verify a Verifiable Presentation and its embedded credentials
+    Verify {
+        /// Path to the presentation JSON
+        #[arg(long)]
+        presentation: PathBuf,
+
+        /// Trusted issuer DIDs for embedded credentials (repeatable)
+        #[arg(long = "trusted")]
+        trusted_issuers: Vec<String>,
+    },
 }
 
 fn main() -> Result<()> {
@@ -74,6 +115,12 @@ fn main() -> Result<()> {
             trusted_issuers,
         } => cmd_verify(credential, trusted_issuers),
         Command::Qr { credential, url } => cmd_qr(credential, url),
+        Command::Vp(vp) => match vp.command {
+            VpCommand::Sign { key, credentials, out } => cmd_vp_sign(key, credentials, out),
+            VpCommand::Verify { presentation, trusted_issuers } => {
+                cmd_vp_verify(presentation, trusted_issuers)
+            }
+        },
     }
 }
 
@@ -177,4 +224,105 @@ fn cmd_qr(credential: PathBuf, base_url: String) -> Result<()> {
     eprintln!("\nURL length: {} bytes", url.len());
 
     Ok(())
+}
+
+fn parse_seed(path: &PathBuf) -> Result<[u8; 32]> {
+    let seed_hex = std::fs::read_to_string(path)
+        .with_context(|| format!("reading key file {}", path.display()))?;
+    let seed_bytes = hex::decode(seed_hex.trim()).context("key must be hex-encoded")?;
+    seed_bytes
+        .try_into()
+        .map_err(|_| anyhow::anyhow!("key must be exactly 32 bytes"))
+}
+
+fn cmd_vp_sign(key: PathBuf, credentials: Vec<PathBuf>, out: Option<PathBuf>) -> Result<()> {
+    let seed = parse_seed(&key)?;
+    let holder = PresentationHolder::new(SigningKey::from_bytes(&seed));
+
+    let mut builder = VerifiablePresentation::builder();
+    for path in &credentials {
+        let json = std::fs::read_to_string(path)
+            .with_context(|| format!("reading credential {}", path.display()))?;
+        let value: serde_json::Value = serde_json::from_str(&json).context("parsing credential JSON")?;
+        builder = builder.credential(value);
+    }
+    let draft = builder.build().context("building presentation")?;
+
+    let signed = holder.sign(draft).context("signing presentation")?;
+    let output = serde_json::to_string_pretty(&signed).context("serializing presentation")?;
+
+    match out {
+        Some(path) => {
+            std::fs::write(&path, &output)
+                .with_context(|| format!("writing to {}", path.display()))?;
+            eprintln!("Wrote presentation to {}", path.display());
+        }
+        None => println!("{output}"),
+    }
+
+    Ok(())
+}
+
+fn cmd_vp_verify(presentation: PathBuf, trusted_issuers: Vec<String>) -> Result<()> {
+    let json = std::fs::read_to_string(&presentation)
+        .with_context(|| format!("reading presentation {}", presentation.display()))?;
+    let vp: VerifiablePresentation =
+        serde_json::from_str(&json).context("parsing presentation JSON")?;
+
+    let outcome = verify_presentation(&vp).context("verifying presentation")?;
+
+    eprintln!("  {}  vp structural", ok(outcome.structural));
+    eprintln!("  {}  vp proof", ok(outcome.proof));
+    for (i, credit) in outcome.credential_results.iter().enumerate() {
+        eprintln!("  {}  credential[{i}] structural", ok(credit.structural));
+        eprintln!("  {}  credential[{i}] proof", ok(credit.proof));
+    }
+
+    if !trusted_issuers.is_empty() {
+        let allowed: Vec<&str> = trusted_issuers.iter().map(|s| s.as_str()).collect();
+        let policy = TrustPolicyStage::allowing(allowed);
+        let mut all_trusted = true;
+        let mut reasons: Vec<String> = Vec::new();
+        for value in &vp.verifiable_credential {
+            match serde_json::from_value::<trustmesh_credentials::Credential>(value.clone()) {
+                Ok(credential) => {
+                    let verdict =
+                        policy.check(&trustmesh_verifier::VerificationContext::new(&credential));
+                    match &verdict {
+                        trustmesh_verifier::Verdict::Pass => {}
+                        trustmesh_verifier::Verdict::Fail(r) => {
+                            all_trusted = false;
+                            reasons.push(r.clone());
+                        }
+                        trustmesh_verifier::Verdict::Inconclusive(r) => {
+                            all_trusted = false;
+                            reasons.push(r.clone());
+                        }
+                    }
+                }
+                Err(_) => {
+                    all_trusted = false;
+                    reasons.push("unable to parse embedded credential".to_owned());
+                }
+            }
+        }
+        if all_trusted {
+            eprintln!("  ok    trust_policy");
+        } else {
+            eprintln!("  FAIL  trust_policy: {}", reasons.join("; "));
+            std::process::exit(1);
+        }
+    }
+
+    if outcome.valid() {
+        eprintln!("\nPresentation is valid.");
+        Ok(())
+    } else {
+        eprintln!("\nPresentation is INVALID.");
+        std::process::exit(1);
+    }
+}
+
+fn ok(good: bool) -> &'static str {
+    if good { "ok" } else { "FAIL" }
 }

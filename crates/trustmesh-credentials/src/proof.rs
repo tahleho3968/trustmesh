@@ -6,6 +6,7 @@ pub const DATA_INTEGRITY_PROOF_TYPE: &str = "DataIntegrityProof";
 pub const EDDSA_RDFC_2022: &str = "eddsa-rdfc-2022";
 pub const EDDSA_JCS_2022: &str = "eddsa-jcs-2022";
 pub const ASSERTION_METHOD_PURPOSE: &str = "assertionMethod";
+pub const AUTHENTICATION_PURPOSE: &str = "authentication";
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

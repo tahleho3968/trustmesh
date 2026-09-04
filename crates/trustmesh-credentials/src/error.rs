@@ -6,6 +6,7 @@ pub enum Error {
     MissingBaseType,
     MissingIssuer,
     NoSubjects,
+    NoCredentials,
     InvalidValidityPeriod,
 }
 
@@ -24,6 +25,9 @@ impl fmt::Display for Error {
             ),
             Error::MissingIssuer => write!(f, "credential must declare an issuer"),
             Error::NoSubjects => write!(f, "credential must have at least one subject"),
+            Error::NoCredentials => {
+                write!(f, "presentation must embed at least one verifiable credential")
+            }
             Error::InvalidValidityPeriod => {
                 write!(f, "validUntil must not be earlier than validFrom")
             }
