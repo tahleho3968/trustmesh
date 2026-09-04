@@ -43,7 +43,9 @@ fn draft_vp(credential: &Credential) -> VerifiablePresentation {
 #[test]
 fn sign_and_verify_single_credential() {
     let holder = holder_for([5u8; 32]);
-    let vp = holder.sign_at(draft_vp(&signed_credential([9u8; 32])), CREATED()).unwrap();
+    let vp = holder
+        .sign_at(draft_vp(&signed_credential([9u8; 32])), CREATED())
+        .unwrap();
     vp.validate().expect("signed VP stays valid");
 
     let outcome = verify_presentation(&vp).expect("verify runs");
@@ -59,7 +61,9 @@ fn sign_and_verify_single_credential() {
 fn sign_and_verify_multiple_credentials() {
     let holder = holder_for([5u8; 32]);
     let mut draft = draft_vp(&signed_credential([9u8; 32]));
-    draft.verifiable_credential.push(serde_json::to_value(signed_credential([8u8; 32])).unwrap());
+    draft
+        .verifiable_credential
+        .push(serde_json::to_value(signed_credential([8u8; 32])).unwrap());
 
     let vp = holder.sign_at(draft, CREATED()).unwrap();
     let outcome = verify_presentation(&vp).expect("verify runs");
@@ -82,12 +86,26 @@ fn holder_is_set_on_sign() {
 #[test]
 fn tampered_vp_proof_rejected() {
     let holder = holder_for([5u8; 32]);
-    let mut vp = holder.sign_at(draft_vp(&signed_credential([9u8; 32])), CREATED()).unwrap();
+    let mut vp = holder
+        .sign_at(draft_vp(&signed_credential([9u8; 32])), CREATED())
+        .unwrap();
     let proof = vp.proof.as_mut().unwrap();
     let value = proof.details.get_mut("proofValue").unwrap();
     let chars: Vec<char> = value.as_str().unwrap().chars().collect();
     let mid = chars.len() / 2;
-    *value = json!(chars.into_iter().enumerate().map(|(i, c)| if i == mid { if c == '1' { '2' } else { '1' } } else { c }).collect::<String>());
+    *value = json!(chars
+        .into_iter()
+        .enumerate()
+        .map(|(i, c)| if i == mid {
+            if c == '1' {
+                '2'
+            } else {
+                '1'
+            }
+        } else {
+            c
+        })
+        .collect::<String>());
 
     let outcome = verify_presentation(&vp).expect("verify runs");
     assert!(outcome.structural);
@@ -98,11 +116,16 @@ fn tampered_vp_proof_rejected() {
 #[test]
 fn tampered_embedded_credential_fails_but_vp_proof_passes() {
     let holder = holder_for([5u8; 32]);
-    let mut vp = holder.sign_at(draft_vp(&signed_credential([9u8; 32])), CREATED()).unwrap();
+    let mut vp = holder
+        .sign_at(draft_vp(&signed_credential([9u8; 32])), CREATED())
+        .unwrap();
 
-    let credential: Credential = serde_json::from_value(vp.verifiable_credential[0].clone()).unwrap();
+    let credential: Credential =
+        serde_json::from_value(vp.verifiable_credential[0].clone()).unwrap();
     let mut tampered = credential;
-    tampered.credential_subject[0].claims.insert("alumniOf".into(), json!("Fake University"));
+    tampered.credential_subject[0]
+        .claims
+        .insert("alumniOf".into(), json!("Fake University"));
     vp.verifiable_credential[0] = serde_json::to_value(&tampered).unwrap();
 
     // Re-sign the VP over the tampered credential so the VP proof is valid.
@@ -122,11 +145,16 @@ fn tampered_embedded_credential_fails_but_vp_proof_passes() {
 fn wrong_holder_key_rejected() {
     let holder = holder_for([5u8; 32]);
     let attacker = holder_for([7u8; 32]);
-    let vp = holder.sign_at(draft_vp(&signed_credential([9u8; 32])), CREATED()).unwrap();
+    let vp = holder
+        .sign_at(draft_vp(&signed_credential([9u8; 32])), CREATED())
+        .unwrap();
     let mut vp = vp;
     let proof = vp.proof.as_mut().unwrap();
     proof.verification_method = attacker.verification_method().to_owned();
-    proof.details.insert("verificationMethod".into(), json!(attacker.verification_method()));
+    proof.details.insert(
+        "verificationMethod".into(),
+        json!(attacker.verification_method()),
+    );
 
     let outcome = verify_presentation(&vp).expect("verify runs");
     assert!(!outcome.proof);
@@ -136,7 +164,9 @@ fn wrong_holder_key_rejected() {
 #[test]
 fn proof_purpose_must_be_authentication() {
     let holder = holder_for([5u8; 32]);
-    let mut vp = holder.sign_at(draft_vp(&signed_credential([9u8; 32])), CREATED()).unwrap();
+    let mut vp = holder
+        .sign_at(draft_vp(&signed_credential([9u8; 32])), CREATED())
+        .unwrap();
     vp.proof.as_mut().unwrap().proof_purpose = "assertionMethod".to_owned();
     let result = verify_presentation(&vp);
     assert!(result.is_err());
