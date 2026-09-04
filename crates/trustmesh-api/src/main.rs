@@ -1,4 +1,5 @@
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use axum::extract::State;
@@ -8,6 +9,7 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 use tower_http::cors::CorsLayer;
+use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 use trustmesh_credentials::{Credential, Subject};
 use trustmesh_crypto::SigningKey;
@@ -67,12 +69,15 @@ async fn main() {
         )
         .init();
 
-    let seed_hex = std::env::var("TRUSTMESH_SEED").unwrap_or_else(|_| {
-        let key = SigningKey::generate().expect("OS randomness");
-        let hex = hex::encode(key.to_bytes());
-        eprintln!("No TRUSTMESH_SEED set; generated ephemeral key: {hex}");
-        hex
-    });
+    let seed_hex = std::env::var("TRUSTMESH_SEED")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| {
+            let key = SigningKey::generate().expect("OS randomness");
+            let hex = hex::encode(key.to_bytes());
+            eprintln!("No TRUSTMESH_SEED set; generated ephemeral key: {hex}");
+            hex
+        });
 
     let seed: [u8; 32] = hex::decode(&seed_hex)
         .expect("TRUSTMESH_SEED must be hex-encoded 32 bytes")
@@ -87,15 +92,24 @@ async fn main() {
         did: issuer.did().to_owned(),
     });
 
+    let static_dir: PathBuf = std::env::var("TRUSTMESH_STATIC_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| {
+            let manifest = std::env!("CARGO_MANIFEST_DIR");
+            PathBuf::from(manifest).join("static")
+        });
+
     let app = Router::new()
         .route("/health", get(health))
         .route("/issue", post(issue))
         .route("/verify", post(verify))
+        .fallback_service(ServeDir::new(&static_dir).append_index_html_on_directories(true))
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())
         .with_state(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
+    tracing::info!("static files: {}", static_dir.display());
     tracing::info!("listening on {addr}");
 
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();

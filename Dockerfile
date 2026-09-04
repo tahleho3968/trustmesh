@@ -12,6 +12,9 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/target/release/trustmesh-api /usr/local/bin/trustmesh-api
+COPY crates/trustmesh-api/static /app/static
+
+ENV TRUSTMESH_STATIC_DIR=/app/static
 
 EXPOSE 3000
 

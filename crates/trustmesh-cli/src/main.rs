@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
+use base64::Engine;
 use clap::{Parser, Subcommand};
 use trustmesh_credentials::Credential;
 use trustmesh_crypto::SigningKey;
@@ -49,6 +50,17 @@ enum Command {
         #[arg(long = "trusted")]
         trusted_issuers: Vec<String>,
     },
+
+    /// Generate a QR code for a credential
+    Qr {
+        /// Path to the credential JSON
+        #[arg(long)]
+        credential: PathBuf,
+
+        /// Base URL of the verifier (default: http://localhost:3000)
+        #[arg(long, default_value = "http://localhost:3000")]
+        url: String,
+    },
 }
 
 fn main() -> Result<()> {
@@ -61,6 +73,7 @@ fn main() -> Result<()> {
             credential,
             trusted_issuers,
         } => cmd_verify(credential, trusted_issuers),
+        Command::Qr { credential, url } => cmd_qr(credential, url),
     }
 }
 
@@ -143,4 +156,25 @@ fn cmd_verify(credential: PathBuf, trusted_issuers: Vec<String>) -> Result<()> {
         eprintln!("\nCredential is INVALID.");
         std::process::exit(1);
     }
+}
+
+fn cmd_qr(credential: PathBuf, base_url: String) -> Result<()> {
+    let json = std::fs::read_to_string(&credential)
+        .with_context(|| format!("reading credential {}", credential.display()))?;
+
+    let encoded = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(json.as_bytes());
+    let url = format!("{base_url}/?c={encoded}");
+
+    let code = qrcode::QrCode::new(url.as_bytes()).context("generating QR code")?;
+
+    let qr = code
+        .render::<qrcode::render::unicode::Dense1x2>()
+        .quiet_zone(true)
+        .build();
+
+    println!("{qr}");
+
+    eprintln!("\nURL length: {} bytes", url.len());
+
+    Ok(())
 }
