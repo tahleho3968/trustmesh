@@ -5,5 +5,6 @@ services:
       - "3000:3000"
     environment:
       - TRUSTMESH_SEED=${TRUSTMESH_SEED:-}
+      - TRUSTMESH_STATIC_DIR=/app/static
       - RUST_LOG=trustmesh_api=info,tower_http=info
     restart: unless-stopped

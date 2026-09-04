@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TrustMesh Verifier</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; color: #1a1a1a; line-height: 1.5; }
+  .container { max-width: 640px; margin: 0 auto; padding: 2rem 1rem; }
+  h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.25rem; }
+  .subtitle { color: #666; font-size: 0.875rem; margin-bottom: 1.5rem; }
+  label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.375rem; }
+  textarea { width: 100%; height: 240px; font-family: ui-monospace, monospace; font-size: 0.8125rem; padding: 0.75rem; border: 1px solid #d0d0d0; border-radius: 6px; resize: vertical; background: #fff; }
+  textarea:focus { outline: 2px solid #2563eb; outline-offset: -1px; }
+  .row { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.75rem; }
+  .row label { margin-bottom: 0; font-size: 0.8125rem; }
+  button { padding: 0.5rem 1.25rem; border: none; border-radius: 6px; font-size: 0.875rem; font-weight: 500; cursor: pointer; }
+  .btn-primary { background: #2563eb; color: #fff; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
+  .btn-secondary { background: #e5e5e5; color: #1a1a1a; }
+  .btn-secondary:hover { background: #d4d4d4; }
+  #file-input { display: none; }
+  .banner { padding: 0.625rem 0.875rem; border-radius: 6px; font-size: 0.8125rem; margin-bottom: 1rem; display: none; }
+  .banner.info { display: block; background: #dbeafe; color: #1e40af; }
+  .banner.error { display: block; background: #fee2e2; color: #991b1b; }
+  .results { margin-top: 1.25rem; display: none; }
+  .results.visible { display: block; }
+  .result-header { font-size: 1rem; font-weight: 600; margin-bottom: 0.625rem; }
+  .result-header.valid { color: #16a34a; }
+  .result-header.invalid { color: #dc2626; }
+  .stage-list { list-style: none; }
+  .stage-list li { padding: 0.375rem 0; font-size: 0.875rem; display: flex; align-items: center; gap: 0.5rem; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot.pass { background: #16a34a; }
+  .dot.fail { background: #dc2626; }
+  .dot.inconclusive { background: #d97706; }
+  .spinner { display: inline-block; width: 1rem; height: 1rem; border: 2px solid #d0d0d0; border-top-color: #2563eb; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 0.375rem; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>TrustMesh Verifier</h1>
+  <p class="subtitle">W3C Verifiable Credential 2.0</p>
+
+  <div id="banner" class="banner"></div>
+
+  <label for="credential-input">Credential JSON</label>
+  <textarea id="credential-input" placeholder="Paste a signed Verifiable Credential here..."></textarea>
+
+  <div class="row">
+    <button id="verify-btn" class="btn-primary" onclick="verify()">Verify</button>
+    <button class="btn-secondary" onclick="document.getElementById('file-input').click()">Upload file</button>
+    <input type="file" id="file-input" accept=".json,application/json" onchange="handleFile(this)">
+  </div>
+
+  <div id="results" class="results">
+    <div id="result-header" class="result-header"></div>
+    <ul id="stage-list" class="stage-list"></ul>
+  </div>
+</div>
+
+<script>
+function showBanner(text, type) {
+  const b = document.getElementById('banner');
+  b.textContent = text;
+  b.className = 'banner ' + type;
+}
+
+function clearBanner() {
+  document.getElementById('banner').className = 'banner';
+}
+
+function handleFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('credential-input').value = e.target.result;
+    clearBanner();
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+async function verify() {
+  const raw = document.getElementById('credential-input').value.trim();
+  if (!raw) { showBanner('Paste a credential or upload a JSON file.', 'error'); return; }
+
+  let credential;
+  try { credential = JSON.parse(raw); }
+  catch { showBanner('Invalid JSON.', 'error'); return; }
+
+  const btn = document.getElementById('verify-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Verifying\u2026';
+
+  document.getElementById('results').className = 'results';
+  clearBanner();
+
+  try {
+    const resp = await fetch('/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credential })
+    });
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      showBanner(data.error || 'Verification request failed.', 'error');
+      return;
+    }
+
+    const header = document.getElementById('result-header');
+    const list = document.getElementById('stage-list');
+
+    if (data.valid) {
+      header.textContent = '\u2714 Credential is valid';
+      header.className = 'result-header valid';
+    } else {
+      header.textContent = '\u2718 Credential is invalid';
+      header.className = 'result-header invalid';
+    }
+
+    list.innerHTML = '';
+    for (const s of data.stages) {
+      const li = document.createElement('li');
+      li.innerHTML = '<span class="dot ' + s.verdict + '"></span>' +
+        '<span>' + s.stage + ' &mdash; ' + s.verdict + '</span>';
+      list.appendChild(li);
+    }
+
+    document.getElementById('results').className = 'results visible';
+  } catch (err) {
+    showBanner('Network error: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Verify';
+  }
+}
+
+(function init() {
+  const params = new URLSearchParams(window.location.search);
+  const c = params.get('c');
+  if (!c) return;
+
+  try {
+    const json = decodeURIComponent(escape(atob(c.replace(/-/g, '+').replace(/_/g, '/'))));
+    document.getElementById('credential-input').value = json;
+    showBanner('Shared credential loaded.', 'info');
+    verify();
+  } catch {
+    showBanner('Could not decode credential from URL.', 'error');
+  }
+})();
+</script>
+</body>
+</html>
