@@ -2,10 +2,14 @@ pub mod canonical;
 
 mod error;
 mod issuer;
+mod presentation;
 mod verifier;
 
 pub use error::Error;
 pub use issuer::CredentialIssuer;
+pub use presentation::{
+    verify_presentation, verify_presentation_with, PresentationHolder, PresentationOutcome,
+};
 pub use verifier::{verify_credential, verify_credential_with, VerificationOutcome};
 
 pub const DATA_INTEGRITY_PROOF_TYPE: &str = "DataIntegrityProof";

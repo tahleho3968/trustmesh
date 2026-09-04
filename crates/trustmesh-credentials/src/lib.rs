@@ -3,6 +3,7 @@ pub mod datetime;
 mod credential;
 mod error;
 mod issuer;
+mod presentation;
 mod proof;
 mod status;
 mod subject;
@@ -13,8 +14,10 @@ use serde_json::{Map, Value};
 pub use credential::{Credential, CredentialSchema};
 pub use error::Error;
 pub use issuer::Issuer;
+pub use presentation::{PresentationBuilder, VerifiablePresentation};
 pub use proof::{
-    Proof, ASSERTION_METHOD_PURPOSE, DATA_INTEGRITY_PROOF_TYPE, EDDSA_JCS_2022, EDDSA_RDFC_2022,
+    Proof, ASSERTION_METHOD_PURPOSE, AUTHENTICATION_PURPOSE, DATA_INTEGRITY_PROOF_TYPE,
+    EDDSA_JCS_2022, EDDSA_RDFC_2022,
 };
 pub use status::{
     compress_bitstring, BitstringStatusList, ExpandedStatusList, Status, StatusError,
@@ -25,6 +28,7 @@ pub use subject::Subject;
 
 pub const BASE_CONTEXT: &str = "https://www.w3.org/ns/credentials/v2";
 pub const VERIFIABLE_CREDENTIAL_TYPE: &str = "VerifiableCredential";
+pub const VERIFIABLE_PRESENTATION_TYPE: &str = "VerifiablePresentation";
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
